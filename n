@@ -1,0 +1,1601 @@
+local UIS = game:GetService("UserInputService")
+local device = "PC"
+if UIS.TouchEnabled and not UIS.KeyboardEnabled then
+    device = "Mobile"
+elseif UIS.GamepadEnabled then
+    device = "Console"
+end
+
+-- Executor detection
+local executor = "Unknown"
+local executorVersion = "N/A"
+if identifyexecutor then
+    executor = identifyexecutor()
+elseif syn then
+    executor = "Synapse X"
+elseif KRNL_LOADED then
+    executor = "Krnl"
+elseif fluxus then
+    executor = "Fluxus"
+elseif is_sirhurt_closure then
+    executor = "SirHurt"
+elseif OXYGEN then
+    executor = "Oxygen U"
+elseif Delta then
+    executor = "Delta"
+elseif Codex then
+    executor = "Codex"
+end
+
+-- HWID detection
+local hwid = "Unavailable"
+pcall(function()
+    if syn and syn.gethwid then
+        hwid = syn.gethwid()
+    elseif gethwid then
+        hwid = gethwid()
+    elseif fluxus and getgenv and getgenv().fluxus then
+        hwid = tostring(getgenv().fluxus.HWID or "Unavailable")
+    elseif delta and get_hw_id then
+        hwid = tostring(get_hw_id())
+    end
+end)
+
+-- Game info
+local gameName = "Unknown"
+pcall(function()
+    local info = MarketplaceService:GetProductInfo(game.PlaceId)
+    if info and info.Name then 
+        gameName = info.Name 
+    end
+end)
+
+local function anti_debug()
+    local bad = {
+        "getgc",
+        "debug",
+        "getupvalues",
+        "getconstants",
+        "getproto",
+        "hookmetamethod",
+        "hookfunction",
+        "islclosure",
+        "getinfo",
+        "getcallingscript",
+        "getscriptclosure",
+        "getloadedmodules"
+    }
+    for _,v in ipairs(bad) do
+        if getfenv()[v] then
+            getfenv()[v] = function() return nil end
+        end
+    end
+end
+pcall(anti_debug)
+
+local function protect_http()
+    local block = {
+        "syn", "request", "http_request", "HttpGet", "HttpPost",
+        "spy", "spyfunc", "logger", "link", "dump", "remote"
+    }
+    for _,v in ipairs(block) do
+        if typeof(getfenv()[v]) == "function" then
+            getfenv()[v] = function() return nil end
+        end
+    end
+end
+pcall(protect_http)
+
+local function anti_dex()
+    local cg = game:GetService("CoreGui")
+    for _,c in pairs(cg:GetChildren()) do
+        local n = c.Name:lower()
+        if n:find("dex") or n:find("explorer") or n:find("spy") then
+            c:Destroy()
+        end
+    end
+end
+pcall(anti_dex)
+
+task.spawn(function()
+    while task.wait(0.25) do
+        pcall(anti_dex)
+    end
+end)
+
+----------------------------------
+-- ISOLATED SANDBOX ENV
+----------------------------------
+local sandbox_env = setmetatable({}, { __index = getfenv() })
+
+local function safe_exec(str)
+    local f = loadstring(str)
+    if not f then return end
+    setfenv(f, sandbox_env)
+    return f()
+end
+
+local watched_words = {"httpspy","simplespy","rspy","remotespy","logger","trace","dump","spy"}
+local real_loadstring = loadstring
+
+loadstring = function(code,...)
+
+    if type(code)=="string" then 
+        local lower = code:lower()
+
+        for _,w in ipairs(watched_words) do
+            if lower:find(w) then
+                warn("⚠ What?",w)
+
+                -- scan UI sekali lagi untuk jaga-jaga
+                destroy_spy_ui()
+
+                return function()end -- blokir script nya
+            end
+        end
+    end
+
+    return real_loadstring(code,...)
+end
+
+local function PAYLOAD()
+print("Loading XZuyaX's HUB...")
+local ReplicatedStorage = game.ReplicatedStorage
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local username = LocalPlayer.Name
+
+local Popup = require(ReplicatedStorage.Shared.Popup)
+Popup.Popup(
+		player,
+        "Welcome "..username.." to XZuyaX's HUB!",
+		10
+	)
+
+local dcl = "https://discord.gg/X4H7phPu8P" 
+
+pcall(function()
+    if setclipboard then
+        setclipboard(dcl)
+    elseif toclipboard then
+        toclipboard(dcl)
+    end
+end)
+
+getgenv().SecureMode = true
+
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "XZuyaX's HUB",
+   Icon = 86136928465509,
+   LoadingTitle = "XZuyaX's HUB",
+   LoadingSubtitle = "Loading...",
+   ShowText = "",
+   Theme = "Ocean",
+   ToggleUIKeybind = "K",
+   ConfigurationSaving = { Enabled = true, 
+   FolderName = "XZuyaX's Hub", 
+   FileName = "Config" },
+   Discord = {
+      Enabled = true,
+      Invite = "X4H7phPu8P",
+      RememberJoins = true
+   },
+   KeySystem = false,
+   KeySettings = {
+      Title = "XZuyaX Key System",
+      Subtitle = "Enter Key",
+      Note = "Paste the Discord Link on the Clipboard to ur website,and join it to get the key",
+      FileName = "XZuyaX_Key",
+      SaveKey = true,
+      GrabKeyFromSite = false,
+      Key = {"WhatNext", "whatnext", "Whatnext", " WhatNext"}
+   }
+})
+
+-- TABS
+local InfoTab = Window:CreateTab("Home")
+local MainTab = Window:CreateTab("Main")
+local BallTab = Window:CreateTab("Ball Hack")
+local MiscTab = Window:CreateTab("Misc")
+local PTab = Window:CreateTab("Player")
+local VTab = Window:CreateTab("Visual")
+local CRTab = Window:CreateTab("Chemical Reaction")
+
+-- ====================== INFO TAB – SEMUA TOMBOL MUNCUL ======================
+InfoTab:CreateSection("Creator")
+
+InfoTab:CreateLabel("Made by XZuyaX", "crown", Color3.fromHex("#00ff88"))
+
+InfoTab:CreateLabel("Executor: "..executor.." | Device: "..device, "cpu")
+
+InfoTab:CreateParagraph({
+    Title = "Welcome "..username.." to XZuyaX's HUB!",
+    Content = "Thanks for using my script!\n\nStay updated with my latest scripts and content by following me on social media!"
+})
+
+-- Changelog (pasti muncul karena disimpan variable)
+local Changelog = InfoTab:CreateParagraph({
+    Title = "Latest Update",
+    Content = [[
+• Chemical Reaction | WIP
+
+Join discord for more!
+]]
+})
+
+InfoTab:CreateSection("Socials")
+
+-- YouTube terpisah (muncul di atas)
+InfoTab:CreateButton({
+   Name = "YouTube",
+   Callback = function()
+       setclipboard("https://youtube.com/@xzuyax-d7n")
+       Rayfield:Notify({
+           Title = "YouTube",
+           Content = "Link copied to clipboard!",
+           Duration = 4
+       })
+   end
+})
+
+-- TikTok terpisah (muncul di bawah YouTube)
+InfoTab:CreateButton({
+   Name = "TikTok",
+   Callback = function()
+       setclipboard("https://www.tiktok.com/@zuyaxrawr?_t=ZS-8vaZDjWUU1R&_r=1")
+       Rayfield:Notify({
+           Title = "TikTok",
+           Content = "Link copied to clipboard!",
+           Duration = 4
+       })
+   end
+})
+
+-- Discord terpisah (muncul di bawah TikTok)
+InfoTab:CreateButton({
+   Name = "Join Our Discord Server!",
+   Callback = function()
+       setclipboard("https://discord.gg/X4H7phPu8P")
+       Rayfield:Notify({
+           Title = "Copied!",
+           Content = "Discord invite link copied to clipboard.",
+           Duration = 5
+       })
+   end
+})
+
+Rayfield:Notify({
+    Title = "XZuyaX's HUB",
+    Content = "Loaded Successfully",
+    Duration = 6
+})
+
+----== SECTION ==--
+local Section = MainTab:CreateSection("▸ Team & Role Selection")
+
+--== VARIABLES ==--
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local Knit = ReplicatedStorage:WaitForChild("Packages"):WaitForChild("Knit")
+local TeamService = Knit.Services:WaitForChild("TeamService")
+local selectEvent = TeamService.RE.Select
+local teamsFolder = ReplicatedStorage:WaitForChild("Teams")
+
+local selectedTeam = "Home"
+local selectedPosition = "RW"
+local autoSelectEnabled = false
+local connection
+
+
+--== CHECK POSITION FUNCTION ==--
+local function HasPosition()
+	local team = teamsFolder:FindFirstChild(selectedTeam .. "Team")
+	if not team then return false end
+
+	local role = team:FindFirstChild(selectedPosition)
+	if not role then return false end
+
+	return role.Value == player
+end
+
+
+--== AUTO SELECT TOGGLE LOGIC ==--
+local function ToggleAutoSelect(state)
+	autoSelectEnabled = state
+
+	if state then
+		connection = RunService.RenderStepped:Connect(function()
+			local currentTeam = player.Team and player.Team.Name or "Visitor"
+
+			if currentTeam == "Visitor" or not HasPosition() then
+				selectEvent:FireServer(selectedTeam, selectedPosition)
+			end
+		end)
+	else
+		if connection then
+			connection:Disconnect()
+			connection = nil
+		end
+	end
+end
+
+
+--== DROPDOWN: SELECT TEAM ==--
+local DropdownTeam = MainTab:CreateDropdown({
+	Name = "Select Team",
+	Options = { "Home", "Away" },
+	CurrentOption = { "Home" },
+	MultipleOptions = false,
+	Flag = "SelectTeamFlag",
+	Callback = function(Options)
+		selectedTeam = Options[1]
+	end,
+})
+
+
+--== DROPDOWN: SELECT ROLE ==--
+local DropdownRole = MainTab:CreateDropdown({
+	Name = "Select Position",
+	Options = { "CF", "CM", "RW", "LW", "GK" },
+	CurrentOption = { "RW" },
+	MultipleOptions = false,
+	Flag = "SelectRoleFlag",
+	Callback = function(Options)
+		selectedPosition = Options[1]
+	end,
+})
+
+
+--== TOGGLE: AUTO SELECT ROLE ==--
+local AutoSelectToggle = MainTab:CreateToggle({
+	Name = "Auto Select Role",
+	CurrentValue = false,
+	Flag = "AutoSelectFlag",
+	Callback = function(Value)
+		ToggleAutoSelect(Value)
+	end,
+})
+
+--== SECTION ==--
+local Section = MainTab:CreateSection("▸ Game Enhancers")
+
+--== MODULE AutoSlideV1 ==--
+local AutoSlideV1 = {}
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local BallService = ReplicatedStorage.Packages.Knit.Services.BallService.RE
+local LocalPlayer = Players.LocalPlayer
+
+local autoSlideOn = false
+local slideDistance = 25
+local lastSlide = 0
+local cooldown = 0
+
+function AutoSlideV1.SetActive(state)
+	autoSlideOn = state
+end
+
+function AutoSlideV1.Start()
+	task.spawn(function()
+		while true do
+			task.wait(0.2)
+			if not autoSlideOn then continue end
+
+			local holder = nil
+			for _, player in pairs(Players:GetPlayers()) do
+				if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Football") then
+					holder = player
+					break
+				end
+			end
+
+			if holder and holder.Character and holder.Character:FindFirstChild("HumanoidRootPart") then
+				local myChar = LocalPlayer.Character
+				if myChar and myChar:FindFirstChild("HumanoidRootPart") then
+					local dist = (myChar.HumanoidRootPart.Position - holder.Character.HumanoidRootPart.Position).Magnitude
+
+					if dist <= slideDistance and tick() - lastSlide >= cooldown then
+						BallService.Slide:FireServer()
+						lastSlide = tick()
+					end
+				end
+			end
+		end
+	end)
+end
+
+--== TOGGLE Aura Slide V1 ==--
+local ToggleSlideV1 = MainTab:CreateToggle({
+	Name = "Aura Slide",
+	CurrentValue = false,
+	Flag = "AuraSlideFlag",
+	Callback = function(Value)
+		AutoSlideV1.SetActive(Value)
+	end,
+})
+
+AutoSlideV1.Start()
+
+
+
+
+--== MODULE AutoSlide V2 ==--
+local AutoSlide = {}
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local BallService = ReplicatedStorage.Packages.Knit.Services.BallService.RE
+local LocalPlayer = Players.LocalPlayer
+local Workspace = game:GetService("Workspace")
+
+local autoSlideOn2 = false
+local slideDistance2 = 25
+local lastSlide2 = 0
+local cooldown2 = 0
+local previousDribbling = {}
+
+function AutoSlide.SetActive(state)
+	autoSlideOn2 = state
+end
+
+function AutoSlide.Start()
+	task.spawn(function()
+		while true do
+			task.wait()
+			if not autoSlideOn2 then continue end
+
+			local holder = nil
+			for _, player in pairs(Players:GetPlayers()) do
+				if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("Football") then
+					holder = player
+					break
+				end
+			end
+
+			if holder and holder.Character and holder.Character:FindFirstChild("HumanoidRootPart") then
+				local myChar = LocalPlayer.Character
+				if myChar and myChar:FindFirstChild("HumanoidRootPart") then
+					local dist = (myChar.HumanoidRootPart.Position - holder.Character.HumanoidRootPart.Position).Magnitude
+
+					local wsChar = Workspace:FindFirstChild(holder.Name)
+					local dribbling = wsChar and wsChar:FindFirstChild("Values") and wsChar.Values:FindFirstChild("Dribbling")
+
+					if dribbling then
+						local prev = previousDribbling[holder.Name]
+						local now = dribbling.Value
+
+						if prev == true and now == false and dist <= slideDistance2 and tick() - lastSlide2 >= cooldown2 then
+							task.delay(0, function()
+								if holder.Character and holder.Character:FindFirstChild("Football") then
+									BallService.Slide:FireServer()
+									lastSlide2 = tick()
+								end
+							end)
+						end
+
+						previousDribbling[holder.Name] = now
+					end
+				end
+			end
+		end
+	end)
+end
+
+--== TOGGLE Aura Slide V2 ==--
+local ToggleSlideV2 = MainTab:CreateToggle({
+	Name = "Aura Slide V2",
+	CurrentValue = false,
+	Flag = "AuraSlideV2Flag",
+	Callback = function(Value)
+		AutoSlide.SetActive(Value)
+	end,
+})
+
+AutoSlide.Start()
+
+--== AUTO GOAL TOGGLE ==--
+local AutoGoalToggle = MainTab:CreateToggle({
+    Name = "Auto Goal",
+    CurrentValue = false,
+    Flag = "AutoGoalFlag",
+    Callback = function(value)
+
+        _G.AutoCombo = value
+
+        local Players = game:GetService("Players")
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local Workspace = game:GetService("Workspace")
+        local player = Players.LocalPlayer
+        local BallService = ReplicatedStorage.Packages.Knit.Services.BallService.RE
+        local Goals = ReplicatedStorage:WaitForChild("Goals")
+        local TweenService = game:GetService("TweenService")
+        local lastGoalValue = {Away = Goals.Away.Value, Home = Goals.Home.Value}
+        local waitingAfterGoal = false
+
+        -- Noclip
+        local function toggleNoclip(state)
+            local RunService = game:GetService("RunService")
+            if state then
+                _G.NoclipConnection = RunService.Stepped:Connect(function()
+                    if player.Character then
+                        for _, part in pairs(player.Character:GetDescendants()) do
+                            if part:IsA("BasePart") and part.CanCollide then
+                                part.CanCollide = false
+                            end
+                        end
+                    end
+                end)
+            elseif _G.NoclipConnection then
+                _G.NoclipConnection:Disconnect()
+                _G.NoclipConnection = nil
+                if player.Character then
+                    for _, part in pairs(player.Character:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            part.CanCollide = true
+                        end
+                    end
+                end
+            end
+        end
+
+        local function waitForCharacter()
+            repeat task.wait() until player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+            return player.Character, player.Character:FindFirstChild("HumanoidRootPart")
+        end
+
+        local function getTeam()
+            return player.Team and player.Team.Name or "Unknown"
+        end
+
+        local function getGoalCFrame()
+            if getTeam() == "Home" then
+                return CFrame.new(-242.376602, 10.8505239, -49.222084)
+            else
+                return CFrame.new(319.823425, 10.8505239, -49.222084)
+            end
+        end
+
+        local function findFootball()
+            for _, plr in pairs(Players:GetPlayers()) do
+                if plr.Character and plr.Character:FindFirstChild("Football") then
+                    return plr.Character.Football, plr
+                end
+            end
+            local fb = Workspace:FindFirstChild("Football")
+            if fb then return fb, nil end
+            return nil, nil
+        end
+
+        local function tweenToGoalThenTeleport()
+            local goalPos = getGoalCFrame().Position + Vector3.new(0, 1.2, 0)
+
+            -- Kick 3x
+            for i = 1, 3 do
+                BallService.Shoot:FireServer(110, nil, Vector3.zero)
+                task.wait(0.05)
+            end
+
+            -- Force teleport bola
+            for i = 1, 5 do
+                local fb = findFootball()
+                if fb then
+                    fb.CFrame = CFrame.new(goalPos)
+                end
+                task.wait(0.05)
+            end
+        end
+
+        -- THREAD AUTO GOAL
+        if value then
+            toggleNoclip(false)
+
+            _G.ComboThread = task.spawn(function()
+                while _G.AutoCombo do
+                    local character, root = waitForCharacter()
+                    local football, owner = findFootball()
+
+                    if Goals.Away.Value ~= lastGoalValue.Away or Goals.Home.Value ~= lastGoalValue.Home then
+                        waitingAfterGoal = true
+                        lastGoalValue.Away = Goals.Away.Value
+                        lastGoalValue.Home = Goals.Home.Value
+                        task.delay(9, function()
+                            waitingAfterGoal = false
+                        end)
+                    end
+
+                    if football then
+                        if football:IsDescendantOf(character) then
+                            tweenToGoalThenTeleport()
+                        end
+
+                        local charValue = football:FindFirstChild("Char")
+                        local shouldTeleport = false
+
+                        if football.Parent == Workspace then
+                            if (not charValue) or (charValue.Value ~= character) then
+                                shouldTeleport = true
+                            elseif charValue.Value == character and not waitingAfterGoal then
+                                shouldTeleport = true
+                            end
+                        elseif owner and owner.Team ~= player.Team then
+                            local enemyHRP = owner.Character and owner.Character:FindFirstChild("HumanoidRootPart")
+                            if enemyHRP and not waitingAfterGoal then
+                                root.CFrame = CFrame.new(enemyHRP.Position + Vector3.new(0, 0.8, 0))
+                                BallService.Slide:FireServer(owner)
+                            end
+                        end
+
+                        if shouldTeleport and not waitingAfterGoal and not football:IsDescendantOf(character) then
+                            root.CFrame = CFrame.new(football.Position + Vector3.new(0, 1.2, 0))
+                        end
+                    end
+
+                    task.wait(0.1)
+                end
+            end)
+
+        else
+            if _G.ComboThread then
+                task.cancel(_G.ComboThread)
+                _G.ComboThread = nil
+            end
+
+            toggleNoclip(false)
+        end
+    end
+})
+
+--== INFINITE STAMINA ==--
+local InfiniteStamina = MainTab:CreateButton({
+    Name = "Infinite Stamina",
+    Callback = function()
+        task.spawn(function()
+            local player = game:GetService("Players").LocalPlayer
+            while task.wait() do
+                if player and player:FindFirstChild("PlayerStats") then
+                    local stats = player.PlayerStats
+                    if stats:FindFirstChild("Stamina") then
+                        stats.Stamina.Value = math.huge
+                    end
+                end
+            end
+        end)
+        print("Infinite Stamina activated!")
+    end,
+})
+
+--== STYLE SECTION (tetap dalam Tab yang sama) ==--
+local Section2 = MainTab:CreateSection("▸ Only Works on some Flows")
+
+
+--== INF FLOW / FLOW BUFF ==--
+local ToggleFlow = MainTab:CreateToggle({
+    Name = "Get Flow Buff | Inf Flow",
+    CurrentValue = false,
+    Flag = "ToggleFlowFlag",
+    Callback = function(state)
+        local player = game:GetService("Players").LocalPlayer
+        if player and player:FindFirstChild("PlayerStats") and player.PlayerStats:FindFirstChild("InFlow") then
+            player.PlayerStats.InFlow.Value = state
+        end
+    end,
+})
+
+
+--== FLOW CHANGER ==--
+local DropdownFlow = MainTab:CreateDropdown({
+    Name = "FLOW CHANGER",
+    Options = {
+        "Homeless Man","Godspeed","Awakened Genius","Destructive Impulses","Emperor","Ace Eater","Dribbler","Bee Freestyle","Snake","Trap","Wild Card","Demon Wings","Crow","King's Instinct","Monster","Buddha's Blessing","Genius","Gale Burst","Lightning","Ice","Puzzle","Stealth","Master of All Trades","Singularity","Contrarian","Demon King","Butterfly Dancer"
+    },
+    CurrentOption = {"Default"},
+    MultipleOptions = false,
+    Flag = "FlowChangerFlag",
+    Callback = function(Options)
+        local option = Options[1]
+        local player = game:GetService("Players").LocalPlayer
+        if player and player:FindFirstChild("PlayerStats") then
+            player.PlayerStats.Flow.Value = option
+            print("Flow Changed To:", option)
+        else
+            warn("PlayerStats not found!")
+        end
+    end,
+})
+
+-- SECTION
+local Section = MainTab:CreateSection("▸ Dribble Controls")
+
+local AutoDribbleLoaded = false
+
+-- TOGGLE AUTO DRIBBLE
+local ToggleAD = MainTab:CreateToggle({
+    Name = "Auto Dribble",
+    CurrentValue = false,
+    Flag = "AutoDribbleToggle",
+    Callback = function(state)
+        if state then
+            if not AutoDribbleLoaded then
+                loadstring(game:HttpGet("https://raw.githubusercontent.com/XZuuyaX/Auto-Dribble/refs/heads/main/Main.lua", true))()
+                AutoDribbleLoaded = true
+            end
+            getgenv().AutoDribbleSettings.Enabled = true
+        else
+            getgenv().AutoDribbleSettings.Enabled = false
+        end
+
+        print("Auto Dribble: " .. tostring(getgenv().AutoDribbleSettings.Enabled))
+    end,
+})
+
+-- INPUT DRIBBLE RANGE
+local InputAD = MainTab:CreateInput({
+    Name = "Dribble Range",
+    CurrentValue = "22",
+    PlaceholderText = "Enter Dribble Range",
+    RemoveTextAfterFocusLost = false,
+    Flag = "DribbleRangeInput",
+    Callback = function(text)
+        getgenv().AutoDribbleSettings.range = tonumber(text) or 22
+        print("Range changed to: " .. getgenv().AutoDribbleSettings.range)
+    end,
+})
+
+local SectionPM = MainTab:CreateSection("▸ POWER SETTINGS | MOBILE")
+
+local UIS = game:GetService("UserInputService")
+local RS = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+local shootButton = player.PlayerGui.Mobile.Ball.Shoot
+
+local maxPower = 180
+local toggleEnabled = false
+local shootConnection
+
+local InputPowerM = MainTab:CreateInput({
+    Name = "Input Power",
+    CurrentValue = "",
+    PlaceholderText = "Enter number (ex: 500)",
+    RemoveTextAfterFocusLost = false,
+    Flag = "MobilePowerInput",
+    Callback = function(Text)
+        local num = tonumber(Text)
+        if num then
+            maxPower = num
+            print("Max power set to:", maxPower)
+        end
+    end,
+})
+
+local TogglePowerM = MainTab:CreateToggle({
+    Name = "Add Power | Mobile",
+    CurrentValue = false,
+    Flag = "MobilePowerToggle",
+    Callback = function(Value)
+        toggleEnabled = Value
+
+        if shootConnection then
+            shootConnection:Disconnect()
+            shootConnection = nil
+        end
+
+        if toggleEnabled then
+            print("Custom shoot enabled")
+
+            shootConnection = shootButton.MouseButton1Click:Connect(function()
+                local shootDirection = Vector3.new(1, 0, 0)
+                local args = {
+                    [1] = maxPower,
+                    [4] = shootDirection
+                }
+
+                ReplicatedStorage.Packages.Knit.Services.BallService.RE.Shoot:FireServer(unpack(args))
+                print("Shoot with power:", maxPower)
+            end)
+        else
+            print("Custom shoot disabled")
+        end
+    end,
+})
+
+local SectionPPC = MainTab:CreateSection("▸ POWER SETTINGS | PC")
+
+local pcMaxPower = 180
+local pcToggleEnabled = false
+local pcShootConnection
+local keybind = Enum.KeyCode.E
+
+local InputPPC = MainTab:CreateInput({
+    Name = "Input Power | PC",
+    CurrentValue = "",
+    PlaceholderText = "Enter number (ex: 500)",
+    RemoveTextAfterFocusLost = false,
+    Flag = "PCPowerInput",
+    Callback = function(Text)
+        local num = tonumber(Text)
+        if num then
+            pcMaxPower = num
+            print("PC Max power set to:", pcMaxPower)
+        end
+    end,
+})
+
+local InputPPC = MainTab:CreateInput({
+    Name = "Keybind | PC",
+    CurrentValue = "",
+    PlaceholderText = "Enter key (ex: E, Q, R)",
+    RemoveTextAfterFocusLost = false,
+    Flag = "PCKeybindInput",
+    Callback = function(Text)
+        local upper = Text:upper()
+        local success, newKey = pcall(function()
+            return Enum.KeyCode[upper]
+        end)
+
+        if success and newKey then
+            keybind = newKey
+            print("Keybind changed to:", keybind.Name)
+        else
+            warn("Invalid key:", Text)
+        end
+    end,
+})
+
+local TogglePPC = MainTab:CreateToggle({
+    Name = "Add Power | PC",
+    CurrentValue = false,
+    Flag = "PCToggleShoot",
+    Callback = function(Value)
+        pcToggleEnabled = Value
+
+        if pcShootConnection then
+            pcShootConnection:Disconnect()
+            pcShootConnection = nil
+        end
+
+        if pcToggleEnabled then
+            print("PC Custom shoot active (press " .. keybind.Name .. " to shoot)")
+
+            pcShootConnection = UIS.InputBegan:Connect(function(input, gp)
+                if not gp and input.KeyCode == keybind then
+                    local shootDirection = Vector3.new(1, 0, 0)
+
+                    local args = {
+                        [1] = pcMaxPower,
+                        [4] = shootDirection
+                    }
+
+                    ReplicatedStorage.Packages.Knit.Services.BallService.RE.Shoot:FireServer(unpack(args))
+                    print("Shoot with power:", pcMaxPower)
+                end
+            end)
+        else
+            print("PC Custom shoot disabled")
+        end
+    end,
+})
+
+-- CACHE hitbox agar tidak scan workspace terus
+local footballHitbox = nil
+local rgbActive = false
+
+local function findHitbox()
+    if footballHitbox and footballHitbox.Parent then
+        return footballHitbox
+    end
+
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if obj:IsA("Part") and obj.Name == "Hitbox" and obj.Parent.Name == "Football" then
+            footballHitbox = obj
+            return footballHitbox
+        end
+    end
+
+    return nil
+end
+
+---------------------------------------------------
+-- SLIDER (Rayfield Terbaru)
+---------------------------------------------------
+local sliderexpander = BallTab:CreateSlider({
+    Name = "Ball Expander",
+    Range = {1, 25},
+    Increment = 0.1,
+    CurrentValue = 2.5,
+    Flag = "ball_expander",
+    Suffix = "",
+    Callback = function(value)
+        local hitbox = findHitbox()
+        if hitbox then
+            hitbox.Size = Vector3.new(value, value, value)
+            hitbox.Transparency = 0.5
+            hitbox.Material = Enum.Material.ForceField
+        end
+    end,
+})
+
+---------------------------------------------------
+-- OPTIMIZED RGB SYSTEM
+---------------------------------------------------
+local RGBHitbox = BallTab:CreateToggle({
+    Name = "Enable RGB Hitbox",
+    CurrentValue = false,
+    Flag = "rgb_hitbox",
+    Callback = function(state)
+        rgbActive = state
+        
+        local hitbox = findHitbox()
+        if not hitbox then return end
+
+        if state then
+            hitbox.Material = Enum.Material.Neon
+            hitbox.Transparency = 0.8
+        else
+            hitbox.Color = Color3.new(1,1,1)
+            hitbox.Material = Enum.Material.ForceField
+            hitbox.Transparency = 0.5
+        end
+    end,
+})
+
+---------------------------------------------------
+-- GLOBAL RGB LOOP (1 loop saja)
+---------------------------------------------------
+task.spawn(function()
+    while true do
+        if rgbActive then
+            local hitbox = findHitbox()
+            if hitbox then
+                hitbox.Color = Color3.fromRGB(
+                    math.random(0,255),
+                    math.random(0,255),
+                    math.random(0,255)
+                )
+            end
+        end
+        task.wait(0.5)
+    end
+end)
+
+BallTab:CreateButton({
+    Name = "Control Ball",
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/XZuuyaX/CtrlBall/main/Main"))()
+    end
+})
+
+local Player = game.Players.LocalPlayer
+local PlayerGui = Player.PlayerGui
+local ScreenGuiName = "ScreenGui"  -- Ganti dengan nama ScreenGui yang tepat
+
+-- Cek apakah ScreenGui ada
+local function getScreenGui()
+    return PlayerGui:FindFirstChild(ScreenGuiName)  -- Cari ScreenGui berdasarkan nama
+end
+
+-- Tombol untuk Delete GUI
+BallTab:CreateButton({
+    Name = "Delete Control Ball Gui",
+    Callback = function()
+        local ScreenGui = getScreenGui()
+
+        -- Jika ScreenGui ditemukan, hapus
+        if ScreenGui then
+            ScreenGui:Destroy()
+            print("ScreenGui has been removed.")
+        else
+            print("ScreenGui not found, no need to delete.")
+        end
+    end
+})
+
+BallTab:CreateButton({
+    Name = "SnakeShoot",
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/yz188u/SnkSht/main/main.luau"))()
+    end
+})
+
+MiscTab:CreateSection("Run the Auto Goalkeeper | Not 100% Accurate , but still good i think", Color3.fromHex("#00ff88"))
+
+local ButtonAGK = MiscTab:CreateButton({
+    Name = "Auto GK",
+    Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/yz188u/agk/main/main.luau", true))() end
+})
+
+MiscTab:CreateSection("To fix bug when you use Auto GK")
+
+local ButtonFixAGK = MiscTab:CreateButton({
+    Name = "Fix Bug Character",
+    Callback = function()
+        local playerModel = workspace:FindFirstChild(game.Players.LocalPlayer.Name)
+        if playerModel and playerModel:FindFirstChild("IsRagdoll") then
+            local isRagdoll = playerModel.IsRagdoll
+            isRagdoll.Value = true
+            isRagdoll.Value = false
+        else
+            print("IsRagdoll not found!")
+        end
+    end
+})
+
+local GKAssist = false
+
+local ToggleGKAssist = MiscTab:CreateToggle({
+    Name = "GK Assist",
+    CurrentValue = false,
+    Callback = function(state)
+        GKAssist = state
+        if GKAssist then
+            task.spawn(function()
+                while GKAssist do
+                    pcall(function()
+                        game:GetService("ReplicatedStorage").Packages.Knit.Services.BallService.RE.Dive:FireServer()
+                    end)
+                    task.wait(0.1)
+                end
+            end)
+        end
+    end
+})
+
+local tpwalking = false
+local tpwalkConnection -- buat nyimpen loop-nya
+
+-- Toggle buat aktif/inaktifin tpwalk
+MiscTab:CreateToggle({
+    Name = "SpeedHack",
+    CurrentValue = false,
+    Callback = function(state)
+        tpwalking = state
+
+        -- Stop loop lama dulu kalau ada
+        if tpwalkConnection then
+            tpwalkConnection:Disconnect()
+            tpwalkConnection = nil
+        end
+
+        -- Kalau dinyalain, mulai ulang loop-nya
+        if tpwalking then
+            tpwalkConnection = game:GetService("RunService").Heartbeat:Connect(function()
+                local chr = game.Players.LocalPlayer.Character
+                local hum = chr and chr:FindFirstChildWhichIsA("Humanoid")
+
+                if chr and hum and hum.Parent then
+                    if hum.MoveDirection.Magnitude > 0 then
+                        if tspeed and isNumber(tspeed) then
+                            chr:TranslateBy(hum.MoveDirection * tonumber(tspeed))
+                        else
+                            chr:TranslateBy(hum.MoveDirection)
+                        end
+                    end
+                end
+            end)
+        end
+    end
+})
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local KnitClient = require(ReplicatedStorage.Packages.Knit.KnitClient)
+
+local plr = Players.LocalPlayer
+local NoCD_Active = false -- status toggle
+
+-- Try get AbilityController
+local success, AbilityController = pcall(function()
+    return KnitClient.GetController("AbilityController")
+end)
+
+if not success or not AbilityController then
+    warn("AbilityController not found")
+    return -- stop jika tidak ada controller
+end
+
+MiscTab:CreateButton({
+    Name = "No Cooldown",
+    Callback = function()
+
+        plr:SetAttribute("NoCooldowns", true)
+
+        if AbilityController.legacy and type(AbilityController.legacy.AbilityCooldown) == "function" then
+            AbilityController.legacy.AbilityCooldown = function() end
+        end
+
+        if type(AbilityController.AbilityCooldown) == "function" then
+            AbilityController.AbilityCooldown = function() end
+        end
+
+        pcall(function()
+            AbilityController.AbilityOne = 0
+            AbilityController.AbilityTwo = 0
+            AbilityController.AbilityThree = 0
+        end)
+
+        print("No Cooldown Activated")
+    end
+})
+
+MiscTab:CreateButton({
+    Name = "No CD V2 | Try this if v1 doesn't work",
+    Callback = function()
+        local p = game:GetService("Players").LocalPlayer
+        local c = require(game.ReplicatedStorage.Controllers.AbilityController)
+        
+        task.spawn(function()
+            while true do
+                c.AbilityUsed, c.AbilityOne, c.AbilityTwo, c.AbilityThree = 0, 0, 0, 0
+                local char = p.Character
+                if char then pcall(function() char:SetAttribute("LastV", 0) end) end
+                task.wait()
+            end
+        end)
+    end
+})
+
+local KickoffBypass = { Enabled = false }
+
+local oldNamecall
+oldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
+    local method = getnamecallmethod()
+    local args = {...}
+
+    -- Baca attribute → selalu false
+    if KickoffBypass.Enabled and method == "GetAttribute" and args[1] == "KickoffAbilityBlocked" then
+        return false
+    end
+
+    -- Kalau game nyoba set ke TRUE → blok
+    if KickoffBypass.Enabled and method == "SetAttribute" and args[1] == "KickoffAbilityBlocked" then
+        return -- tidak melakukan apa pun
+    end
+
+    return oldNamecall(self, ...)
+end)
+
+-- Jaga supaya tetap false setiap kali berubah
+pcall(function()
+    workspace.AttributeChanged:Connect(function(name)
+        if KickoffBypass.Enabled and name == "KickoffAbilityBlocked" then
+            workspace:SetAttribute("KickoffAbilityBlocked", false)
+        end
+    end)
+
+    workspace:SetAttribute("KickoffAbilityBlocked", false)
+end)
+
+print("Kickoff Bypass Detected")
+
+MiscTab:CreateToggle({
+    Name = "Kickoff Bypass",
+    CurrentValue = false,          -- 🔥 default ON (sesuai script)
+    Callback = function(state)
+        KickoffBypass.Enabled = state
+
+        if state then
+            pcall(function()
+                workspace:SetAttribute("KickoffAbilityBlocked", false)
+            end)
+            print("✅ Bypass ON")
+        else
+            print("❌ Bypass OFF")
+        end
+    end
+})
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Player = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
+local FlyEnabled = false
+local FlySpeed = 1
+
+local BV, BG, FlyConn
+local controlModule
+
+local function StartFly()
+	if FlyEnabled then return end
+	FlyEnabled = true
+
+	local char = Player.Character or Player.CharacterAdded:Wait()
+	local hum = char:WaitForChild("Humanoid")
+	local root = char:WaitForChild("HumanoidRootPart")
+
+	controlModule = require(
+		Player.PlayerScripts:WaitForChild("PlayerModule"):WaitForChild("ControlModule")
+	)
+
+	-- Body movers
+	BV = Instance.new("BodyVelocity")
+	BV.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+	BV.Velocity = Vector3.zero
+	BV.Parent = root
+
+	BG = Instance.new("BodyGyro")
+	BG.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+	BG.P = 9e4
+	BG.CFrame = root.CFrame
+	BG.Parent = root
+
+	hum.PlatformStand = true
+
+	FlyConn = RunService.RenderStepped:Connect(function()
+		if not FlyEnabled or not root or not hum then return end
+
+		local cam = workspace.CurrentCamera
+		local dir = controlModule:GetMoveVector() -- Vector3(X,0,Z)
+
+		BV.Velocity =
+			(-cam.CFrame.LookVector * dir.Z +
+			  cam.CFrame.RightVector * dir.X)
+			* (FlySpeed * 50)
+
+		BG.CFrame = cam.CFrame
+	end)
+end
+
+local function StopFly()
+	FlyEnabled = false
+
+	if FlyConn then FlyConn:Disconnect() FlyConn = nil end
+	if BV then BV:Destroy() BV = nil end
+	if BG then BG:Destroy() BG = nil end
+
+	local char = Player.Character
+	if char and char:FindFirstChildOfClass("Humanoid") then
+		char:FindFirstChildOfClass("Humanoid").PlatformStand = false
+	end
+end
+
+PTab:CreateToggle({
+	Name = "Fly",
+	CurrentValue = false,
+	Callback = function(v)
+		if v then
+			StartFly()
+		else
+			StopFly()
+		end
+	end
+})
+
+Player.CharacterAdded:Connect(function()
+	task.wait(0.5)
+	if FlyEnabled then
+		StopFly()
+		StartFly()
+	end
+end)
+
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local NoclipConnection
+-- Cache collision asli
+local CollisionCache = {}
+
+local function CacheCollision(char)
+    table.clear(CollisionCache)
+    for _, v in pairs(char:GetDescendants()) do
+        if v:IsA("BasePart") then
+            CollisionCache[v] = v.CanCollide
+        end
+    end
+end
+
+-- Cache pertama kali
+CacheCollision(Character)
+
+-- Update kalau respawn
+LocalPlayer.CharacterAdded:Connect(function(char)
+    Character = char
+    task.wait(0.1)
+    CacheCollision(char)
+end)
+
+PTab:CreateToggle({
+    Name = "Noclip",
+    CurrentValue = false,
+    Flag = "NoclipToggle",
+    Callback = function(Value)
+        if Value then
+            -- Safety: cegah dobel Stepped
+            if NoclipConnection then
+                NoclipConnection:Disconnect()
+                NoclipConnection = nil
+            end
+
+            CacheCollision(Character)
+
+            NoclipConnection = RunService.Stepped:Connect(function()
+                for part in pairs(CollisionCache) do
+                    if part and part.Parent then
+                        part.CanCollide = false
+                    end
+                end
+            end)
+        else
+            if NoclipConnection then
+                NoclipConnection:Disconnect()
+                NoclipConnection = nil
+            end
+
+            for part, state in pairs(CollisionCache) do
+                if part and part.Parent then
+                    part.CanCollide = state
+                end
+            end
+        end
+    end
+})
+
+--========================================================--
+--==================== ESP STYLE (FULL BIG) =============--
+--========================================================--
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local LocalPlayer = Players.LocalPlayer
+if not LocalPlayer then return end
+
+local playerGui = LocalPlayer:WaitForChild("PlayerGui", 5)
+if not playerGui then return end
+
+-- Wadah ESP
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "ESP_STYLE_CONTAINER"
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = playerGui
+
+-- ===== DATA =====
+local ESP_ENABLED = false
+local labels = {}
+local renderConns = {}
+local charConns = {}
+local statConns = {}
+local retryThreads = {}
+
+-- ===== TEMPLATE =====
+local function CreateTemplate()
+    local lbl = Instance.new("TextLabel")
+    lbl.Name = "StyleESP"
+    lbl.Size = UDim2.new(0, 140, 0, 60)  -- ukuran lebih besar
+    lbl.AnchorPoint = Vector2.new(0.5, 0)
+    lbl.BackgroundTransparency = 1
+    lbl.Font = Enum.Font.GothamBlack
+    lbl.TextColor3 = Color3.fromRGB(255,255,255)
+    lbl.TextStrokeTransparency = 0
+    lbl.TextScaled = true   -- teks menyesuaikan label
+    lbl.AutomaticSize = Enum.AutomaticSize.None
+    lbl.ZIndex = 1000
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Thickness = 4
+    stroke.Color = Color3.fromRGB(0,0,0)
+    stroke.Transparency = 0
+    stroke.Parent = lbl
+
+    local grad = Instance.new("UIGradient")
+    grad.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(180, 0, 255)), -- putih
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(90, 0, 140)), -- abu-abu
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 0, 0)) -- hitam
+    })
+    grad.Rotation = 90
+    grad.Parent = lbl
+
+    return lbl
+end
+
+-- ===== CLEANUP =====
+local function CleanupPlayer(plr)
+    if renderConns[plr] then pcall(renderConns[plr].Disconnect, renderConns[plr]) end
+    if labels[plr] then pcall(labels[plr].Destroy, labels[plr]) end
+    if charConns[plr] then pcall(charConns[plr].Disconnect, charConns[plr]) end
+    if statConns[plr] then pcall(statConns[plr].Disconnect, statConns[plr]) end
+    if retryThreads[plr] then pcall(function() retryThreads[plr]:Disconnect() end) end
+
+    labels[plr] = nil
+    renderConns[plr] = nil
+    charConns[plr] = nil
+    statConns[plr] = nil
+    retryThreads[plr] = nil
+end
+
+-- ===== ATTACH ESP =====
+local function Attach(plr, character)
+    CleanupPlayer(plr)
+
+    if not character then return end
+    local head = character:FindFirstChild("Head")
+
+    if not head then
+        retryThreads[plr] = RunService.Heartbeat:Connect(function()
+            if character:FindFirstChild("Head") then
+                retryThreads[plr]:Disconnect()
+                retryThreads[plr] = nil
+                Attach(plr, character)
+            end
+        end)
+        return
+    end
+
+    local lbl = CreateTemplate()
+    lbl.Parent = ScreenGui
+    labels[plr] = lbl
+
+    statConns[plr] = plr.ChildAdded:Connect(function(child)
+        if child.Name == "PlayerStats" then
+            local s = child:WaitForChild("Style", 5)
+            if s then lbl.Text = tostring(s.Value) end
+        end
+    end)
+
+    renderConns[plr] = RunService.RenderStepped:Connect(function()
+        if not ESP_ENABLED then lbl.Visible = false return end
+        if not character or not head.Parent then lbl.Visible = false return end
+
+        local stats = plr:FindFirstChild("PlayerStats")
+        if stats then
+            local st = stats:FindFirstChild("Style")
+            if st then lbl.Text = tostring(st.Value) end
+        end
+
+        local cam = workspace.CurrentCamera
+        local pos = head.Position + Vector3.new(0, 3.5, 0) -- sedikit lebih tinggi supaya lebih jelas
+        local screenPos, onScreen = cam:WorldToViewportPoint(pos)
+
+        if not onScreen or screenPos.Z < 0 then lbl.Visible = false return end
+
+        lbl.Visible = true
+        lbl.Position = UDim2.new(
+            screenPos.X / cam.ViewportSize.X,
+            0,
+            screenPos.Y / cam.ViewportSize.Y,
+            -lbl.AbsoluteSize.Y
+        )
+    end)
+
+    charConns[plr] = character.AncestryChanged:Connect(function(_, parent)
+        if not parent then CleanupPlayer(plr) end
+    end)
+end
+
+-- ===== REFRESH =====
+local function FullRefresh()
+    for plr in pairs(labels) do
+        CleanupPlayer(plr)
+    end
+
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            if p.Character then Attach(p, p.Character) end
+            if not charConns[p] then
+                charConns[p] = p.CharacterAdded:Connect(function(char)
+                    Attach(p, char)
+                end)
+            end
+        end
+    end
+end
+
+for _, p in ipairs(Players:GetPlayers()) do
+    if p ~= LocalPlayer then
+        if p.Character then Attach(p, p.Character) end
+        charConns[p] = p.CharacterAdded:Connect(function(char)
+            Attach(p, char)
+        end)
+    end
+end
+
+Players.PlayerRemoving:Connect(CleanupPlayer)
+
+task.wait(1)
+FullRefresh()
+
+-- ===== AUTO REFRESH 30 DETIK =====
+task.spawn(function()
+    while true do
+        task.wait(30)
+        if ESP_ENABLED then
+            FullRefresh()
+        end
+    end
+end)
+
+-- ===== TOGGLE GUI =====
+VTab:CreateToggle({
+    Name = "ESP Style",
+    CurrentValue = false,
+    Flag = "ESPSTYLEFLAG",
+    Callback = function(Value)
+        ESP_ENABLED = Value
+
+        if not Value then
+            for _, lbl in pairs(labels) do
+                if lbl then
+                    lbl.Visible = false
+                end
+            end
+        else
+            task.spawn(function()
+                task.wait(0.2)
+                FullRefresh()
+            end)
+        end
+    end,
+})
+
+VTab:CreateButton({
+    Name = "Emote | Re-Press if it got bug",
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/yz188u/EmtBlr/main/main.luau"))()
+    end
+})
+
+MiscTab:CreateSection("FE COSMETICS")
+
+local cosmeticName = ""
+
+-- Input box untuk nama cosmetics
+MiscTab:CreateInput({
+    Name = "Cosmetic Name",
+    PlaceholderText = "Input Cosmetic Name",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(Text)
+        -- Update variabel lokal dengan input user
+        cosmeticName = Text
+        print("Cosmetic name updated to: " .. cosmeticName)
+    end,
+})
+
+-- Tombol Equip untuk mem-fire RemoteEvent
+MiscTab:CreateButton({
+    Name = "Equip Cosmetic",
+    Callback = function()
+        -- Cek apakah RemoteEvent ada
+        local ReplicatedStorage = game:GetService("ReplicatedStorage")
+        local Event = ReplicatedStorage:FindFirstChild("Packages") and
+                      ReplicatedStorage.Packages:FindFirstChild("Knit") and
+                      ReplicatedStorage.Packages.Knit:FindFirstChild("Services") and
+                      ReplicatedStorage.Packages.Knit.Services:FindFirstChild("CustomizationService") and
+                      ReplicatedStorage.Packages.Knit.Services.CustomizationService.RE:FindFirstChild("Customize")
+
+        if Event then
+            -- Fire RemoteEvent dengan input user
+            Event:FireServer("Cosmetics", cosmeticName, "1")
+            Rayfield:Notify({
+                Title = "Success",
+                Content = "Cosmetic '" .. cosmeticName .. "' equipped!",
+                Duration = 3
+            })
+        else
+            Rayfield:Notify({
+                Title = "Error",
+                Content = "Script Patched!",
+                Duration = 3
+            })
+        end
+    end,
+})
+
+CRTab:CreateButton({
+    Name = "BachiraXLavinhoCR",
+    Callback = function()
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/XZuuyaX/XZuyaX-s-Hub/main/bcrxl.lua"))()
+    end
+})
+Rayfield:LoadConfiguration()
+
+end
+PAYLOAD()
